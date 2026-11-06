@@ -5,12 +5,14 @@ HANDOFF_WORDS = ["refund", "cancel", "complaint"]
 
 
 class FlowerAssistant:
-    """A rule-based FAQ assistant for a fictional flower shop."""
+    """A flower shop assistant that uses rules, an FAQ tool, and a model."""
 
-    def __init__(self, name, faq_tool):
-        """Store the assistant's name, FAQ tool, and conversation history."""
+    def __init__(self, name, faq_tool, model, instructions):
+        """Store the assistant's settings, tools, model, and history."""
         self.name = name
         self.faq_tool = faq_tool
+        self.model = model
+        self.instructions = instructions
         self.history = []
 
     def respond(self, user_message):
@@ -21,7 +23,7 @@ class FlowerAssistant:
         return reply
 
     def choose_reply(self, user_message):
-        """Choose a response based on keywords in the message."""
+        """Use rules first, then the model for other questions."""
         text = user_message.lower()
 
         if self.needs_human(text):
@@ -30,15 +32,19 @@ class FlowerAssistant:
         if any(word in text for word in ["hours", "delivery", "pickup"]):
             return self.faq_reply(user_message)
 
-        if "hello" in text or "hi" in text.split():
-            return (
-                f"Hello! I'm {self.name}. "
-                "I can answer questions about our hours, delivery, and pickup."
-            )
         if "faq" in text or "question" in text:
             return self.faq_reply(user_message)
 
-        return "I'm not sure how to help with that. I can answer store FAQs."
+        return self.model_reply()
+
+    def model_reply(self):
+        """Ask the model for a response or give a safe fallback."""
+        reply = self.model.reply(self.instructions, self.history)
+
+        if reply is None:
+            return "Sorry, I can't answer that right now. Please try again in a moment."
+
+        return reply
 
     def needs_human(self, text):
         """Check whether a request should be handled by staff."""
@@ -52,6 +58,7 @@ class FlowerAssistant:
             return "Which topic? I can help with hours, delivery, or pickup."
 
         answer = self.faq_tool.answer_for(topic)
+
         if answer is None:
             return "I couldn't find information about that topic."
 
